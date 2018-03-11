@@ -112,7 +112,6 @@ def fileCallback(loop,uid):
             loop.create_task(tcp_echo_client(m, loop))
 
         else:
-            # print(multicast_group)
             try:
                 connect=[]
                 for g in multicast_group:
@@ -123,7 +122,7 @@ def fileCallback(loop,uid):
                 asyncio.gather(*connect)
             except:
                 pass
-                # print('you haven't selected a group yet')
+
     except:
         pass
 

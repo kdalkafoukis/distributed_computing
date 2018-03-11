@@ -64,8 +64,6 @@ async def handle_echo(reader, writer):
 
             res=json.dumps({'quit':''})
 
-    print('groups:',groups)
-    print('users:',users)
 
     print("Send: %r" % res)
     writer.write(res.encode())
