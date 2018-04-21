@@ -5,7 +5,6 @@
 import asyncio
 import sys
 import json
-import copy
 
 class UDPserver:
     def connection_made(self, transport):
