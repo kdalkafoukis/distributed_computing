@@ -1,10 +1,11 @@
 #!/usr/bin/env python3.6
 
-##tcp server,tcp client,udp client
-####udp client fifo missing (phase2)
+##udp server,tcp client,udp client
+####udp client without ordering (buffering)
 import asyncio
 import sys
 import json
+import copy
 
 class UDPserver:
     def connection_made(self, transport):
@@ -12,8 +13,9 @@ class UDPserver:
 
     def datagram_received(self, data, addr):
         message = data.decode()
-        print('udp server Received %r from %s' % (message, addr))
-        print('udp server Send %r to %s' % (message, addr))
+        req=json.loads(data.decode())
+        print('[',req['username'],']>',req['message'])
+        # print('udp server Send %r to %s' % (message, addr))
         self.transport.sendto(data, addr)
 
 class UDPclient:
@@ -24,20 +26,20 @@ class UDPclient:
 
     def connection_made(self, transport):
         self.transport = transport
-        print('udp client Send:', self.message)
+        # print('udp client Send:', self.message)
         self.transport.sendto(self.message.encode())
 
     def datagram_received(self, data, addr):
-        print("udp client Received:", data.decode())
-
-        print("udp client Close the socket")
+        # print("udp client Received:", data.decode())
+        # print("udp client Close the socket")
         self.transport.close()
 
     def error_received(self, exc):
         print('udp client Error received:', exc)
 
     def connection_lost(self, exc):
-        print("udp client Socket closed")
+        pass
+        # print("udp client Socket closed")
         #loop = asyncio.get_event_loop()
         #loop.stop()
 
@@ -77,32 +79,37 @@ def fileCallback(loop,uid):
                 if (flag[1:]):
                     m['join_group']=flag[1]
                     current_group[0]=flag[1]
-
                 else:
                     return
 
             elif (flag[0]=='!lm'):
                 if (flag[1:]):
+                    m['join_group']=flag[1]
+                    m=json.dumps(m)
+                    loop.run_until_complete(tcp_echo_client(m, loop)) #cheat use member list to avoid
+                                                                      #registering to groups again
                     m['list_members']=flag[1]
                 else:
                     return
 
             elif (flag[0]=='!w'):
                 if (flag[1:]):
-                    global multicast_group
-                    multicast_group=[]
+                    g=[]
                     for v in groups[flag[1]].values():
-                        multicast_group.append((v['ip'],v['port']))
+                        g.append((v['ip'],v['port']))
 
+                    w['multicast_group']=g
                 return
 
             elif (flag[0]=='!e'):
                 if (flag[1:]):
+                    w['multicast_group']=[]
                     m['exit_group']=flag[1]
                 else:
                     return
 
             elif (flag[0]=='!q'):
+                w['multicast_group']=[]
                 m['quit']=''
 
             else:
@@ -113,15 +120,18 @@ def fileCallback(loop,uid):
 
         else:
             try:
+
                 connect=[]
-                for g in multicast_group:
+                m=json.dumps({'message':message,'username':username})
+                for address in w['multicast_group']:
                     connect.append(loop.create_datagram_endpoint(
-                        lambda: UDPclient(message, loop),
-                        remote_addr=g))
+                        lambda: UDPclient(m, loop),
+                        remote_addr=address))
 
                 asyncio.gather(*connect)
             except:
                 pass
+
 
     except:
         pass
@@ -131,7 +141,7 @@ port=9999
 username='konsta'
 groups={}
 current_group=['']
-
+w={'multicast_group':[],'username':username}
 loop = asyncio.get_event_loop()
 
 listen = loop.create_datagram_endpoint(UDPserver, local_addr=(addr, port))   #create udp server
@@ -141,13 +151,12 @@ message={'register':{'ip':addr,'port':str(port),'username':username}}   #initial
 m=json.dumps(message)
 uid=loop.run_until_complete(tcp_echo_client(m, loop)) #register
 
-loop.add_reader(sys.stdin,fileCallback,loop,uid)      #add asynchronous input
+loop.add_reader(sys.stdin,fileCallback,loop,uid,)      #add asynchronous input
 
 try:
     loop.run_forever()
 except KeyboardInterrupt:
     pass
-
 # Close the server
 transport.close()
 loop.close()
