@@ -14,6 +14,7 @@ class UDPserver:
     def datagram_received(self, data, addr):
         message = data.decode()
         req=json.loads(data.decode())
+        # print('udp server Received %r from %s' % (message, addr))
         print('[',req['username'],']>',req['message'])
         # print('udp server Send %r to %s' % (message, addr))
         self.transport.sendto(data, addr)
