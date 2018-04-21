@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.6
 
 ##tcp server,tcp client,udp client
-####udp client fifo missing (phase2)
+####udp client fifo
 import asyncio
 import sys
 import json
